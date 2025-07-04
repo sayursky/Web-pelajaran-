@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kuis Pintar</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      padding: 30px;
+      background: linear-gradient(to right, #eef2f3, #dce5ec);
+      overflow-x: hidden;
+    }
+    #loginContainer, #quizContainer, #adminPanel, #scorePage {
+      background: white;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      max-width: 600px;
+      margin: auto;
+      margin-top: 20px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #28a745;
+      color: white;
+      transition: 0.3s;
+    }
+    button:hover {
+      background-color: #1e7e34;
+    }
+    .btn-danger {
+      background-color: #dc3545;
+    }
+    .btn-danger:hover {
+      background-color: #a71d2a;
+    }
+    #options button {
+      margin: 10px 0;
+      padding: 12px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      width: 100%;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    #options button:hover {
+      background-color: #0056b3;
+    }
+    h2, h3 {
+      text-align: center;
+      color: #333;
+    }
+    #leaderboard {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #ffefc2;
+      padding: 10px;
+      color: #444;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      z-index: 1000;
+    }
+    #leaderboard span {
+      display: inline-block;
+      animation: marquee 20s linear infinite;
+    }
+    @keyframes marquee {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    #realTimeClock {
+      text-align: center;
+      font-size: 16px;
+      font-weight: bold;
+      color: #333;
+      margin-top: 10px;
+    }
+    #developerName {
+      text-align: center;
+      color: gray;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background-color: #f7f7f7;
+    }
+    #infoUpdate {
+      display: none;
+      background: #d0f0ff;
+      padding: 10px;
+      overflow: hidden;
+      white-space: nowrap;
+      color: #000;
+      font-weight: bold;
+    }
+    #infoUpdateText {
+      display: inline-block;
+      animation: marquee 25s linear infinite;
+    }
+  </style>
+</head>
+<body>
+  <div id="realTimeClock">⏰ Waktu saat ini: </div>
+  <div id="leaderboard" style="display:none;"><span id="topPlayerText">🏆</span></div>
+  <div id="infoUpdate"><span id="infoUpdateText">📢 Tidak ada informasi terbaru.</span></div>
+  <div id="loginContainer">
+    <h2>🎮 Login Kuis</h2>
+    <input type="text" id="username" placeholder="Masukkan Username">
+    <button onclick="loginPemain()">Masuk</button>
+    <p id="developerName">Developer: <strong>ABDUL SUKUR</strong></p>
+  </div>
+  <div id="quizContainer" style="display:none;">
+    <h2 id="greeting"></h2>
+    <p><strong>Skor:</strong> <span id="score">0</span> / 10</p>
+    <div id="questionBox">
+      <h3 id="questionText"></h3>
+      <div id="options"></div>
+    </div>
+    <button class="btn-danger" onclick="logout()">Logout</button>
+  </div>
+  <div id="adminPanel" style="display:none;">
+    <h2>⚙️ Panel Admin</h2>
+    <input type="text" id="newQuestion" placeholder="Tulis pertanyaan">
+    <input type="text" id="newOptions" placeholder="Opsi (pisah dengan koma A,B,C,D)">
+    <input type="text" id="newAnswer" placeholder="Jawaban benar (misal: A)">
+    <input type="text" id="newCategory" placeholder="Kategori (MTK, IPA, dll)">
+    <button onclick="addQuestion()">➕ Tambah Soal</button>
+    <h3>✏️ Edit Soal</h3>
+    <select id="editSelect"></select>
+    <button onclick="editSelectedQuestion()">Edit Soal</button>
+    <button class="btn-danger" onclick="logout()">Logout Admin</button>
+  </div>
+  <div id="scorePage" style="display:none;">
+    <h2>📋 Daftar Peringkat</h2>
+    <table>
+      <thead>
+        <tr><th>Peringkat</th><th>Nama</th><th>Skor</th><th>Waktu</th></tr>
+      </thead>
+      <tbody id="scoreTableBody"></tbody>
+    </table>
+    <button onclick="closeScorePage()">Tutup</button>
+  </div>
+  <script>
+    let questions = JSON.parse(localStorage.getItem("questions")) || [];
+    let usedQuestions = JSON.parse(localStorage.getItem("usedQuestions")) || {};
+    let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+    let updateText = localStorage.getItem("updateText") || "";
+    let currentUser = null;
+    let currentQuestion = null;
+    let currentScore = 0;
+    let soalKe = 0;
+    const maxSoal = 10;
+
+    function updateClock() {
+      const now = new Date();
+      const jam = String(now.getHours()).padStart(2, '0');
+      const menit = String(now.getMinutes()).padStart(2, '0');
+      const detik = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById("realTimeClock").innerText = `⏰ Waktu saat ini: ${jam}:${menit}:${detik}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function tampilkanUpdateInfo() {
+      if (updateText.trim() !== "") {
+        document.getElementById("infoUpdateText").innerText = "📢 " + updateText;
+        document.getElementById("infoUpdate").style.display = "block";
+      } else {
+        document.getElementById("infoUpdate").style.display = "none";
+      }
+    }
+
+    function adminModeInfoUpdate() {
+      const aksi = prompt("Ketik:\n1 = Tambah/ubah informasi\n2 = Hapus informasi\n3 = Atur server ON/OFF\n4 = Batal");
+      if (aksi === "1") {
+        const newInfo = prompt("Masukkan informasi update:");
+        if (newInfo && newInfo.trim() !== "") {
+          updateText = newInfo.trim();
+          localStorage.setItem("updateText", updateText);
+          alert("✅ Informasi diperbarui!");
+          tampilkanUpdateInfo();
+        }
+      } else if (aksi === "2") {
+        if (confirm("Yakin ingin menghapus informasi update?")) {
+          updateText = "";
+          localStorage.removeItem("updateText");
+          tampilkanUpdateInfo();
+          alert("🗑️ Informasi dihapus!");
+        }
+      } else if (aksi === "3") {
+        const status = confirm("Apakah Anda ingin MENGAKTIFKAN server?");
+        localStorage.setItem("serverActive", status ? "on" : "off");
+        alert("🌐 Server sekarang dalam keadaan: " + (status ? "ON ✅" : "OFF ❌"));
+      }
+    }
+
+    function loginPemain() {
+      const user = document.getElementById("username").value.trim();
+      const serverStatus = localStorage.getItem("serverActive") || "on";
+      if (serverStatus === "off" && user !== "#2025AB" && user !== "#2") {
+        alert("⚠️ Server sedang OFF. Silakan coba lagi nanti.");
+        return;
+      }
+      if (user === "#2025AB") {
+        document.getElementById("loginContainer").style.display = "none";
+        document.getElementById("adminPanel").style.display = "block";
+        updateEditList();
+        return;
+      }
+      if (user === "#2") {
+        adminModeInfoUpdate();
+        return;
+      }
+      if (user === "") {
+        alert("Masukkan username!");
+        return;
+      }
+      currentUser = user;
+      if (!usedQuestions[user]) usedQuestions[user] = { benar: [], salah: [] };
+      currentScore = 0;
+      soalKe = 0;
+      document.getElementById("score").innerText = "0";
+      document.getElementById("loginContainer").style.display = "none";
+      document.getElementById("quizContainer").style.display = "block";
+      document.getElementById("greeting").innerText = `Selamat bermain, ${user} 👋`;
+      tampilkanSoal();
+    }
+
+    function tampilkanSoal() {
+      const soalTersisa = questions.filter(q => !usedQuestions[currentUser].benar.includes(q.soal));
+      if (soalKe >= maxSoal || soalTersisa.length === 0) return endQuiz();
+      soalKe++;
+      currentQuestion = soalTersisa[Math.floor(Math.random() * soalTersisa.length)];
+      document.getElementById("questionText").innerText = currentQuestion.soal;
+      const opsiBox = document.getElementById("options");
+      opsiBox.innerHTML = "";
+      currentQuestion.opsi.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.innerText = opt;
+        btn.onclick = () => jawab(opt);
+        opsiBox.appendChild(btn);
+      });
+    }
+
+    function jawab(jawaban) {
+      const benar = currentQuestion.jawaban === jawaban;
+      const soal = currentQuestion.soal;
+      if (benar) {
+        alert("✅ Benar!");
+        currentScore++;
+        usedQuestions[currentUser].benar.push(soal);
+      } else {
+        alert("❌ Salah!");
+        usedQuestions[currentUser].salah.push(soal);
+      }
+      document.getElementById("score").innerText = currentScore;
+      localStorage.setItem("usedQuestions", JSON.stringify(usedQuestions));
+      tampilkanSoal();
+    }
+
+    function endQuiz() {
+      const now = new Date();
+      const waktuMain = `${now.getHours()}:${now.getMinutes()}`;
+      alert(`🎉 Kuis selesai!\nSkor Anda: ${currentScore} dari ${maxSoal} soal`);
+      leaderboard.push({ nama: currentUser, skor: currentScore, waktu: waktuMain });
+      leaderboard.sort((a, b) => b.skor - a.skor);
+      leaderboard = leaderboard.slice(0, 10);
+      localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+      tampilkanLeaderboard();
+      tampilkanHalamanPeringkat();
+    }
+
+    function tampilkanLeaderboard() {
+      if (leaderboard.length > 0) {
+        document.getElementById("leaderboard").style.display = "block";
+        const emojis = ["🥇", "🥈", "🥉"];
+        let teks = "";
+        leaderboard.slice(0, 3).forEach((p, i) => teks += `${emojis[i]} ${p.nama} (${p.skor})   `);
+        document.getElementById("topPlayerText").innerText = teks;
+      }
+    }
+
+    function tampilkanHalamanPeringkat() {
+      const body = document.getElementById("scoreTableBody");
+      body.innerHTML = "";
+      leaderboard.forEach((p, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${i + 1}</td><td>${p.nama}</td><td>${p.skor}</td><td>${p.waktu || "-"}</td>`;
+        body.appendChild(tr);
+      });
+      document.getElementById("quizContainer").style.display = "none";
+      document.getElementById("scorePage").style.display = "block";
+    }
+
+    function closeScorePage() {
+      location.reload();
+    }
+
+    function logout() {
+      localStorage.setItem("usedQuestions", JSON.stringify(usedQuestions));
+      localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+      location.reload();
+    }
+
+    function addQuestion() {
+      const soal = document.getElementById("newQuestion").value;
+      const opsi = document.getElementById("newOptions").value.split(",");
+      const jawab = document.getElementById("newAnswer").value;
+      const kategori = document.getElementById("newCategory").value;
+      if (!soal || opsi.length < 2 || !jawab) return alert("Isi semua kolom dengan benar.");
+      questions.push({ soal, opsi, jawaban: jawab, kategori });
+      localStorage.setItem("questions", JSON.stringify(questions));
+      alert("✅ Soal berhasil ditambahkan!");
+      updateEditList();
+    }
+
+    function updateEditList() {
+      const select = document.getElementById("editSelect");
+      select.innerHTML = "";
+      questions.forEach((q, i) => {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.innerText = q.soal;
+        select.appendChild(opt);
+      });
+    }
+
+    function editSelectedQuestion() {
+      const index = document.getElementById("editSelect").value;
+      const soalBaru = prompt("Edit soal:", questions[index].soal);
+      if (soalBaru !== null && soalBaru.trim() !== "") {
+        questions[index].soal = soalBaru;
+        localStorage.setItem("questions", JSON.stringify(questions));
+        alert("✏️ Soal berhasil diperbarui!");
+        updateEditList();
+      }
+    }
+
+    if (!localStorage.getItem("serverActive")) {
+      localStorage.setItem("serverActive", "on");
+    }
+    tampilkanLeaderboard();
+    tampilkanUpdateInfo();
+  </script>
+</body>
+</html>
+
