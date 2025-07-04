@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kuis Pintar</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      padding: 30px;
+      background: linear-gradient(to right, #eef2f3, #dce5ec);
+      overflow-x: hidden;
+    }
+    #loginContainer, #quizContainer, #adminPanel, #scorePage {
+      background: white;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      max-width: 600px;
+      margin: auto;
+      margin-top: 20px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #28a745;
+      color: white;
+      transition: 0.3s;
+    }
+    button:hover {
+      background-color: #1e7e34;
+    }
+    .btn-danger {
+      background-color: #dc3545;
+    }
+    .btn-danger:hover {
+      background-color: #a71d2a;
+    }
+    #options button {
+      margin: 10px 0;
+      padding: 12px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      width: 100%;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    #options button:hover {
+      background-color: #0056b3;
+    }
+    h2, h3 {
+      text-align: center;
+      color: #333;
+    }
+    #leaderboard {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #ffefc2;
+      padding: 10px;
+      color: #444;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      z-index: 1000;
+    }
+    #leaderboard span {
+      display: inline-block;
+      animation: marquee 20s linear infinite;
+    }
+    @keyframes marquee {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    #realTimeClock {
+      text-align: center;
+      font-size: 16px;
+      font-weight: bold;
+      color: #333;
+      margin-top: 10px;
+    }
+    #developerName {
+      text-align: center;
+      color: gray;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background-color: #f7f7f7;
+    }
+  </style>
+</head>
+<body>
+
+<div id="realTimeClock">⏰ Waktu saat ini: </div>
+
+<div id="serverStatusBar" style="background:#e3f6f5; padding:10px; text-align:center; font-weight:bold; display:none;"></div>
+<div id="announcementBar" style="background:#fff3cd; color:#856404; padding:10px; overflow:hidden; white-space:nowrap;">
+  <span id="announcementText" style="display:inline-block; animation: marquee 18s linear infinite;"></span>
+</div>
+<div id="updateBar" style="background:#d4edda; color:#155724; padding:10px; overflow:hidden; white-space:nowrap;">
+  <span id="updateText" style="display:inline-block; animation: marquee 25s linear infinite;"></span>
+</div>
+
+<div id="loginContainer">
+  <h2>🎮 Login Kuis</h2>
+  <input type="text" id="username" placeholder="Masukkan Username">
+  <button onclick="loginPemain()">Masuk</button>
+  <p id="developerName">Developer: <strong>ABDUL SUKUR</strong></p>
+</div>
+
+<div id="adminPanel" style="display:none;">
+  <h2>⚙️ Panel Admin</h2>
+  <input type="text" id="newQuestion" placeholder="Tulis pertanyaan">
+  <input type="text" id="newOptions" placeholder="Opsi (pisah dengan koma A,B,C,D)">
+  <input type="text" id="newAnswer" placeholder="Jawaban benar (misal: A)">
+  <input type="text" id="newCategory" placeholder="Kategori (MTK, IPA, dll)">
+  <button onclick="addQuestion()">➕ Tambah Soal</button>
+  <h3>✏️ Edit Soal</h3>
+  <select id="editSelect"></select>
+  <button onclick="editSelectedQuestion()">Edit Soal</button>
+
+  <h3>🟢 Kontrol Server</h3>
+  <p>Status: <span id="serverStatusLabel">Tidak Aktif</span></p>
+  <button onclick="toggleServer()">🔌 On / Off Server</button>
+
+  <h3>📢 Teks Pemberitahuan</h3>
+  <input type="text" id="announcementInput" placeholder="Isi teks pemberitahuan berjalan">
+  <button onclick="setAnnouncement()">Set Pemberitahuan</button>
+
+  <h3>🔄 Update Bergerak</h3>
+  <input type="text" id="updateInput" placeholder="Isi teks update berjalan">
+  <button onclick="setUpdate()">Set Update</button>
+
+  <button class="btn-danger" onclick="logout()">Logout Admin</button>
+</div>
+
+<script>
+function updateClock() {
+  const now = new Date();
+  const jam = now.getHours().toString().padStart(2, '0');
+  const menit = now.getMinutes().toString().padStart(2, '0');
+  const detik = now.getSeconds().toString().padStart(2, '0');
+  const waktu = `${jam}:${menit}:${detik}`;
+  document.getElementById("realTimeClock").innerText = "⏰ Waktu saat ini: " + waktu;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function toggleServer() {
+  const current = localStorage.getItem("serverStatus") || "off";
+  const newStatus = current === "on" ? "off" : "on";
+  localStorage.setItem("serverStatus", newStatus);
+  updateServerStatusBar();
+}
+
+function updateServerStatusBar() {
+  const status = localStorage.getItem("serverStatus") || "off";
+  const bar = document.getElementById("serverStatusBar");
+  const label = document.getElementById("serverStatusLabel");
+  if (status === "on") {
+    bar.style.display = "block";
+    bar.innerText = "🟢 Server Aktif";
+    label.innerText = "Aktif";
+  } else {
+    bar.style.display = "block";
+    bar.innerText = "🔴 Server Tidak Aktif";
+    label.innerText = "Tidak Aktif";
+  }
+}
+
+function setAnnouncement() {
+  const teks = document.getElementById("announcementInput").value.trim();
+  if (teks !== "") {
+    localStorage.setItem("announcementText", teks);
+    updateAnnouncementBar();
+  }
+}
+
+function updateAnnouncementBar() {
+  const teks = localStorage.getItem("announcementText") || "";
+  document.getElementById("announcementText").innerText = teks;
+}
+
+function setUpdate() {
+  const teks = document.getElementById("updateInput").value.trim();
+  if (teks !== "") {
+    localStorage.setItem("updateText", teks);
+    updateUpdateBar();
+  }
+}
+
+function updateUpdateBar() {
+  const teks = localStorage.getItem("updateText") || "";
+  document.getElementById("updateText").innerText = teks;
+}
+
+// Jalankan saat awal
+updateServerStatusBar();
+updateAnnouncementBar();
+updateUpdateBar();
+</script>
+</body>
+</html>
+
